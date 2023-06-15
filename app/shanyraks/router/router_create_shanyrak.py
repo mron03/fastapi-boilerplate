@@ -1,3 +1,4 @@
+import datetime
 from fastapi import Depends, HTTPException, Response, status
 from pydantic import BaseModel
 
@@ -17,8 +18,8 @@ class CreateShanyrakResponse(AppModel):
     rooms_count : str = ''
     description : str = ''
 
-
-
+class CreateCommentRequest(AppModel):
+    content: str = ''
 
 @router.post(
     "/", status_code=status.HTTP_200_OK

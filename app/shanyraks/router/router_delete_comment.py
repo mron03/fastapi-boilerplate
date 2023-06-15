@@ -6,25 +6,16 @@ from ..adapters.jwt_service import JWTData, JwtService
 from .dependencies import parse_jwt_user_data
 
 
-class UpdateShanyrakRequest(AppModel):
-    type: str = ''
-    price: str = ''
-    address: str = ''
-    area: str = ''
-    rooms_count : str = ''
-    description : str = ''
-
-
-@router.patch('/{sh_id : str}')
-def update_shanyrak(
-    sh_id : str,
-    inp : UpdateShanyrakRequest,
+@router.delete('/{shanyrak_id : str}/comment/{comment_id : str}')
+def delete_comment(
+    shanyrak_id : str,
+    comment_id : str,
     jwd_data : JWTData = Depends(parse_jwt_user_data),
     svc : Service = Depends(get_service),
 ):
-    update = svc.repository.update_shanyrak(sh_id, jwd_data.user_id, inp.dict())
+    delete = svc.comment_repository.delete_comment_by_id(comment_id, jwd_data.user_id)
 
-    if update.modified_count == 1: 
+    if delete.deleted_count == 1: 
         return Response(status_code=200)
 
     return Response(status_code=400)

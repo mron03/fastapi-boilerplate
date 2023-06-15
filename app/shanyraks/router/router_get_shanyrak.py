@@ -1,3 +1,5 @@
+from pydantic import Field
+from typing import Any, List
 from fastapi import Depends, HTTPException, Response, status
 from pydantic import BaseModel
 
@@ -16,7 +18,13 @@ class GetChanyrakResponse(AppModel):
     area: str = ''
     rooms_count : str = ''
     description : str = ''
-    
+    media : List = None
+
+class GetCommentResponse(AppModel):
+    id: Any = Field(alias="_id")
+    content: str
+    created_at: str
+    author_id: str
 
 @router.get('/{shanyrak_id : str}', response_model=GetChanyrakResponse)
 def get_shanyrak(

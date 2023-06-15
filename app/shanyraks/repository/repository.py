@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import Optional, Any
+from typing import List, Optional, Any
 
 from bson.objectid import ObjectId
+from fastapi import HTTPException
 from pymongo.database import Database
 
 from ..utils.security import hash_password
@@ -23,7 +24,6 @@ class AuthRepository:
         )
         return shanyrak
 
-
     def update_shanyrak(self, shanyrak_id: str, user_id: str, data: dict[str, Any]) -> UpdateResult:
         return self.database["shanyraks"].update_one(
             filter={"_id": ObjectId(shanyrak_id), "user_id": ObjectId(user_id)},
@@ -37,3 +37,17 @@ class AuthRepository:
             filter={'_id' : ObjectId(shanyrak_id), 'user_id' : ObjectId(user_id)},
         )
     
+    def upload_files(self, shanyrak_id : str, user_id : str, files):
+        upload = self.database["shanyraks"].update_one(
+            filter={"_id": ObjectId(shanyrak_id), "user_id": ObjectId(user_id)},
+            update={"$push": {'media' : files}},
+        )
+    
+        return upload
+
+    def delete_files(self, shanyrak_id : str, user_id : str):
+
+        return self.database["shanyraks"].update_one(
+            filter={"_id": ObjectId(shanyrak_id), "user_id": ObjectId(user_id)},
+            update={"$set": {'media' : []}},
+        )

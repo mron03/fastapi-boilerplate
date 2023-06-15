@@ -31,6 +31,8 @@ mongo_url = (
 if env.MONGO_URL:
     mongo_url = env.MONGO_URL
 
+# mongo_url = "mongodb+srv://noffense:21012003mans@cluster0.ifbi3hj.mongodb.net/?retryWrites=true&w=majority"
+
 # MongoDB connection
 client = MongoClient(mongo_url)
 

@@ -1,10 +1,11 @@
 from pydantic import BaseSettings
 
 from app.config import database
+from app.shanyraks.repository.repository_comments import CommentRepository
 
 from .adapters.jwt_service import JwtService
 from .repository.repository import AuthRepository
-
+from .adapters.s3_service import S3Service
 
 class AuthConfig(BaseSettings):
     JWT_ALG: str = "HS256"
@@ -23,6 +24,8 @@ class Service:
     ):
         self.repository = repository
         self.jwt_svc = jwt_svc
+        self.s3_service = S3Service()
+        self.comment_repository = CommentRepository(database)
 
 
 def get_service():
