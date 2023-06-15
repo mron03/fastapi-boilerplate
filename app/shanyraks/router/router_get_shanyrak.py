@@ -19,6 +19,7 @@ class GetChanyrakResponse(AppModel):
     rooms_count : str = ''
     description : str = ''
     media : List = None
+    location : dict = None
 
 class GetCommentResponse(AppModel):
     id: Any = Field(alias="_id")
