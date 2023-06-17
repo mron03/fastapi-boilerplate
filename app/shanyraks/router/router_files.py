@@ -28,3 +28,24 @@ def upload_files(
         return Response(status_code=200)
 
     return Response(status_code=400)
+
+
+@router.delete('/{shanyrak_id : str}/media')
+def delete_files(
+    shanyrak_id : str,
+    jwd_data : JWTData = Depends(parse_jwt_user_data),
+    svc : Service = Depends(get_service),
+):
+    
+    shanyrak = svc.repository.get_shanyrak_by_id(shanyrak_id)
+    media_files = shanyrak.get('media' , [])
+
+    for media_file in media_files:
+        svc.s3_service.delete_file(media_file)
+    
+    update_shanyrak = svc.repository.update_shanyrak(shanyrak_id, jwd_data.user_id, {'media' : []})
+
+    if update_shanyrak.modified_count == 1: 
+        return Response(status_code=200)
+
+    return Response(status_code=400)

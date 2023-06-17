@@ -1,4 +1,5 @@
 from pydantic import BaseSettings
+from app.auth.adapters.s3_service import S3Service
 
 from app.config import database
 
@@ -23,6 +24,7 @@ class Service:
     ):
         self.repository = repository
         self.jwt_svc = jwt_svc
+        self.s3_service = S3Service()
 
 
 def get_service():
