@@ -1,5 +1,6 @@
 import datetime
-from typing import Any, List
+import math
+from typing import Any, List, Optional
 from fastapi import Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
 
@@ -13,10 +14,10 @@ from app.utils import AppModel
 
 class CreateShanyrakResponse(AppModel):
     type: str = ''
-    price: str = ''
+    price: Optional[int] = None
     address: str = ''
-    area: str = ''
-    rooms_count : str = ''
+    area: Optional[float] = None
+    rooms_count : Optional[int] = None
     description : str = ''
 
 class CreateCommentRequest(AppModel):
@@ -26,10 +27,10 @@ class CreateCommentRequest(AppModel):
 #GET SHANYRAK
 class GetChanyrakResponse(AppModel):
     type: str = ''
-    price: str = ''
+    price: Optional[int] = None
     address: str = ''
-    area: str = ''
-    rooms_count : str = ''
+    area: Optional[float] = None
+    rooms_count : Optional[int] = None
     description : str = ''
     media : List = None
     location : dict = None
@@ -43,12 +44,29 @@ class GetCommentResponse(AppModel):
 #UPDATE SHANYRAK
 class UpdateShanyrakRequest(AppModel):
     type: str = ''
-    price: str = ''
+    price: Optional[int] = None
     address: str = ''
-    area: str = ''
-    rooms_count : str = ''
+    area: Optional[float] = None
+    rooms_count : Optional[int] = None
     description : str = ''
 
+#GET SHANYRAKS BY FILTER
+class Location(AppModel):
+    latitude : str = ''
+    longtitude : str = ''
+
+class Shanyrak(AppModel):
+    id: Any = Field(alias="_id")
+    type : str = ''
+    price : Optional[int] = None
+    address : str = ''
+    area : Optional[float] = None
+    rooms_count : Optional[int] = None
+    location : Location
+
+class GetShanyraksByFilterResponse(AppModel):
+    total : int = None
+    objects : List[Shanyrak]
 
 
 @router.post("/", status_code=status.HTTP_200_OK)
@@ -58,7 +76,12 @@ def create_shanyrak(
     jwt_data: JWTData = Depends(parse_jwt_user_data),
 ) -> dict[str, str]:
     inp = inp.dict()
-    inp['location'] = svc.here_service.get_coordinates(inp['address'])
+
+    coordinates = svc.here_service.get_coordinates(inp['address'])
+    inp['location'] = {'latitude' : coordinates['lat'], 'longtitude' : coordinates['lng']}
+
+    inp['created_at'] = datetime.datetime.utcnow()
+
     response = svc.repository.create_shanyrak(jwt_data.user_id, inp)
 
     return {'id' : str(response.inserted_id)}
@@ -101,3 +124,18 @@ def delete_shanyrak(
         return Response(status_code=200)
 
     return Response(status_code=400)
+
+
+@router.get('/', response_model=GetShanyraksByFilterResponse)
+def get_shanyrak_by_filters(
+    limit : int = 0,
+    offset : int = 0,
+    type : Optional[str] = '',
+    rooms_count : Optional[int] = 0,
+    price_from : Optional[int] = 0,
+    price_until : Optional[int] = 0,
+    svc : Service = Depends(get_service),
+):
+    result = svc.repository.get_shanyraks_by_filter(limit, offset, type, rooms_count, price_from, price_until)
+
+    return result

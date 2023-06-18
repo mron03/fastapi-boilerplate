@@ -51,3 +51,38 @@ class AuthRepository:
             filter={"_id": ObjectId(shanyrak_id), "user_id": ObjectId(user_id)},
             update={"$set": {'media' : []}},
         )
+
+    def get_shanyraks_by_filter(self, limit, offset, type, rooms_count, price_from, price_until):
+        if price_until == 0:
+            price_until = float('infinity')
+
+        types = [type]
+        if type == '':
+            types = ['rent', 'sale']
+        
+        if rooms_count == 0:
+        
+            cursor = self.database['shanyraks'].find(
+                {
+                    'price' : {'$gte' : price_from, '$lte' : price_until},
+                    'type' : {'$in' : types}
+                },
+            ).limit(limit).skip(offset).sort('created_at', -1)
+        else:
+            cursor = self.database['shanyraks'].find(
+                {
+                    'price' : {'$gte' : price_from, '$lte' : price_until},
+                    'type' : {'$in' : types},
+                    'rooms_count' : rooms_count,
+                },
+            ).limit(limit).skip(offset).sort('created_at', -1)
+       
+
+        result = []
+        for item in cursor:
+            result.append(item)
+
+        return {
+            'total' : len(result),
+            'objects' : result
+        }
