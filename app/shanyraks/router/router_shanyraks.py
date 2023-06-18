@@ -53,7 +53,7 @@ class UpdateShanyrakRequest(AppModel):
 #GET SHANYRAKS BY FILTER
 class Location(AppModel):
     latitude : str = ''
-    longtitude : str = ''
+    longitude : str = ''
 
 class Shanyrak(AppModel):
     id: Any = Field(alias="_id")
@@ -78,7 +78,7 @@ def create_shanyrak(
     inp = inp.dict()
 
     coordinates = svc.here_service.get_coordinates(inp['address'])
-    inp['location'] = {'latitude' : coordinates['lat'], 'longtitude' : coordinates['lng']}
+    inp['location'] = {'latitude' : coordinates['lat'], 'longitude' : coordinates['lng']}
 
     inp['created_at'] = datetime.datetime.utcnow()
 
@@ -128,6 +128,9 @@ def delete_shanyrak(
 
 @router.get('/', response_model=GetShanyraksByFilterResponse)
 def get_shanyrak_by_filters(
+    latitude : float,
+    longitude : float,
+    radius_in_km : float,
     limit : int = 0,
     offset : int = 0,
     type : Optional[str] = '',
@@ -136,6 +139,6 @@ def get_shanyrak_by_filters(
     price_until : Optional[int] = 0,
     svc : Service = Depends(get_service),
 ):
-    result = svc.repository.get_shanyraks_by_filter(limit, offset, type, rooms_count, price_from, price_until)
+    result = svc.repository.get_shanyraks_by_filter(latitude, longitude, radius_in_km, limit, offset, type, rooms_count, price_from, price_until)
 
     return result

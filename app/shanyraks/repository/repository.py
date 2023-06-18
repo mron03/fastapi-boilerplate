@@ -52,7 +52,7 @@ class AuthRepository:
             update={"$set": {'media' : []}},
         )
 
-    def get_shanyraks_by_filter(self, limit, offset, type, rooms_count, price_from, price_until):
+    def get_shanyraks_by_filter(self, latitude, longitude, radius, limit, offset, type, rooms_count, price_from, price_until):
         if price_until == 0:
             price_until = float('infinity')
 
@@ -60,12 +60,18 @@ class AuthRepository:
         if type == '':
             types = ['rent', 'sale']
         
+        rad = radius / 111.12
+
         if rooms_count == 0:
-        
             cursor = self.database['shanyraks'].find(
                 {
                     'price' : {'$gte' : price_from, '$lte' : price_until},
-                    'type' : {'$in' : types}
+                    'type' : {'$in' : types},
+                    'location' : {
+                        '$geoWithin' : {
+                            '$center': [[latitude, longitude], rad]
+                        },
+                    }
                 },
             ).limit(limit).skip(offset).sort('created_at', -1)
         else:
@@ -74,9 +80,13 @@ class AuthRepository:
                     'price' : {'$gte' : price_from, '$lte' : price_until},
                     'type' : {'$in' : types},
                     'rooms_count' : rooms_count,
+                    'location' : {
+                        '$geoWithin' : {
+                            '$center': [[latitude, longitude], rad]
+                        },
+                    }
                 },
             ).limit(limit).skip(offset).sort('created_at', -1)
-       
 
         result = []
         for item in cursor:
