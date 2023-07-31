@@ -41,7 +41,7 @@ logger.addHandler(stdout_handler)
 
 
 
-system_template = '''
+system_prompt_template = '''
     Based on PREVIOUS RESPONSES SUMMARY write the LOGICAL CONTINUATION OF THE SCENARIO, DO NOT REPEAT THE CONTENT:
         ```
             {prev_responses_summaries}
@@ -127,7 +127,7 @@ class PdfRepository:
     def get_response_from_gpt(self, docs, prev_response_summaries, student_category, student_level, custom_filter):
         llm=ChatOpenAI(model_name='gpt-3.5-turbo-16k', temperature=0, verbose=True)
 
-        system_prompt = SystemMessagePromptTemplate.from_template(system_template)
+        system_prompt = SystemMessagePromptTemplate.from_template(system_prompt_template)
 
         human_template = '''Complete the following request: {query}'''
         human_prompt = HumanMessagePromptTemplate.from_template(human_template)
