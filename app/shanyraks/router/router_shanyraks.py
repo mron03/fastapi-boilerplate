@@ -141,4 +141,4 @@ def get_shanyrak_by_filters(
 ):
     result = svc.repository.get_shanyraks_by_filter(latitude, longitude, radius_in_km, limit, offset, type, rooms_count, price_from, price_until)
 
-    return result
+    return resultcd
