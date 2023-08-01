@@ -26,11 +26,11 @@ class Service:
         jwt_svc: JwtService,
 
     ):
-        config_here_service = Config()  
+        # config_here_service = Config()  
         self.repository = repository
         self.jwt_svc = jwt_svc
-        self.s3_service = S3Service()
-        self.here_service = HereService(config_here_service.HERE_API_KEY)
+        # self.s3_service = S3Service()
+        # self.here_service = HereService(config_here_service.HERE_API_KEY)
 
 
 def get_service():
