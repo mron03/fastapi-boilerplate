@@ -18,22 +18,30 @@ import sys
 logger = logging.getLogger('my_app')
 logger.setLevel(logging.DEBUG)
 
-stdout_handler = logging.StreamHandler(sys.stdout)
-stdout_handler.setLevel(logging.DEBUG)
-stdout_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+# Check if the handler already exists
+if not logger.hasHandlers():
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setLevel(logging.DEBUG)
+    stdout_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 
-logger.addHandler(stdout_handler)
+    logger.addHandler(stdout_handler)
+
+class CreateScenarioRequest(AppModel):
+    student_category: str = ''
+    student_level: str = ''
+    custom_filter: str = ''
+
 
 
 @router.post("/", status_code=status.HTTP_200_OK)
 def create_scenario(
     file: UploadFile,
-    student_category: str,
-    student_level: str,
-    custom_filter: str,
+    student_category: str = '',
+    student_level: str = '',
+    custom_filter: str = '',
     svc: Service = Depends(get_service)
 ):
-    
-    logger.info(f'Sending a request to create a scenario with {file.filename} file, {student_category} - student category, {student_level} - student level, {custom_filter} - custom filter')
-    response = svc.repository.create_scenario(file.file, file.filename, student_category, student_level, custom_filter)
+
+    logger.debug(f'Sending a request to create a scenario with {file.filename}, {student_category} - student category, {student_level} - student level, {custom_filter} - custom filter')
+    response = svc.repository.create_scenario(file.file, student_category, student_level, custom_filter)
     return {'scenario' : response}

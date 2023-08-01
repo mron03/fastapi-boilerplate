@@ -3,6 +3,7 @@ from typing import BinaryIO, List, Optional, Any
 
 from bson.objectid import ObjectId
 from fastapi import HTTPException
+import psycopg2
 from pymongo.database import Database
 
 from ..utils.security import hash_password
@@ -41,7 +42,7 @@ logger.addHandler(stdout_handler)
 
 
 
-system_prompt_template = '''
+system_template = '''
     Based on PREVIOUS RESPONSES SUMMARY write the LOGICAL CONTINUATION OF THE SCENARIO, DO NOT REPEAT THE CONTENT:
         ```
             {prev_responses_summaries}
@@ -78,11 +79,69 @@ system_prompt_template = '''
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
+def establish_database_connection():
+    db_host = os.getenv('DB_HOST')
+    db_database = os.getenv('DB_DATABASE')
+    db_user = os.getenv('DB_USER')
+    db_password = os.getenv('DB_PASSWORD')
+
+    try:
+        connection = psycopg2.connect(
+            host=db_host,
+            database=db_database,
+            user=db_user,
+            password=db_password
+        )
+        logger.info("Successfully connected to the PostgreSQL database!")
+        return connection
+    except (Exception, psycopg2.Error) as error:
+        logger.info("Error while connecting to PostgreSQL:", error)
+        return None
+
+
 class PdfRepository:
     def __init__(self, database: Database):
         self.database = database
 
-    def create_scenario(self, file: BinaryIO, filename: str, student_category: str, student_level: str, custom_filter: str):
+    def store_responses_in_db(self, responses, file):
+        connection = establish_database_connection()
+        cursor = connection.cursor()
+
+        for response in responses:
+            response_for_history = ''
+            if file:
+                pdf_for_history = file.read()
+        
+            for topic, value in response.items():
+
+                response_for_history += topic
+                response_for_history += '\n'
+
+                for inst_speech, content in value.items():
+
+                    response_for_history += f'{inst_speech} : {content}'
+                    response_for_history += '\n'
+
+                response_for_history += '\n'
+
+            logger.debug(f'RESPONSE FOR HISTORY ================================ \n{response_for_history}')
+
+            if file:
+                try:
+                    command = 'INSERT INTO history_pdf (user_id, pdf_file, response) VALUES(%s, %s, %s)' 
+                    cursor.execute(command, ('mansur', psycopg2.Binary(pdf_for_history), response_for_history,))
+                    connection.commit()
+                except (Exception, psycopg2.Error) as error:
+                    logger.info("Error executing SQL statements when setting pdf_file in history_pdf:", error)
+                    connection.rollback()
+            
+        cursor.close()
+        connection.close()
+
+                
+
+
+    def create_scenario(self, file: BinaryIO, student_category: str, student_level: str, custom_filter: str):
 
         with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
                 tmp_file.write(file.read())
@@ -121,13 +180,15 @@ class PdfRepository:
         for response in responses:
             final_responses.append(json.loads(response))
             logger.debug(f'TYPE OF RESPONSES : \n {type(final_responses[-1])}')
+
+        self.store_responses_in_db(final_responses, file)
         
         return final_responses
 
     def get_response_from_gpt(self, docs, prev_response_summaries, student_category, student_level, custom_filter):
         llm=ChatOpenAI(model_name='gpt-3.5-turbo-16k', temperature=0, verbose=True)
 
-        system_prompt = SystemMessagePromptTemplate.from_template(system_prompt_template)
+        system_prompt = SystemMessagePromptTemplate.from_template(system_template)
 
         human_template = '''Complete the following request: {query}'''
         human_prompt = HumanMessagePromptTemplate.from_template(human_template)
