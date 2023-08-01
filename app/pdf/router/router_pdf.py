@@ -26,22 +26,17 @@ if not logger.hasHandlers():
 
     logger.addHandler(stdout_handler)
 
-class CreateScenarioRequest(AppModel):
-    student_category: str = ''
-    student_level: str = ''
-    custom_filter: str = ''
-
-
 
 @router.post("/", status_code=status.HTTP_200_OK)
 def create_scenario(
     file: UploadFile,
+    user_nickname: str = '',
     student_category: str = '',
     student_level: str = '',
     custom_filter: str = '',
     svc: Service = Depends(get_service)
 ):
 
-    logger.debug(f'Sending a request to create a scenario with {file.filename}, {student_category} - student category, {student_level} - student level, {custom_filter} - custom filter')
-    response = svc.repository.create_scenario(file.file, student_category, student_level, custom_filter)
+    logger.debug(f'Sending a request to create a scenario with NICKNAME: {user_nickname}, {student_category} - student category, {student_level} - student level, {custom_filter} - custom filter')
+    response = svc.repository.create_scenario(file.file, user_nickname, student_category, student_level, custom_filter)
     return {'scenario' : response}

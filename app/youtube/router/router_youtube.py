@@ -18,15 +18,18 @@ import sys
 
 logger = logging.getLogger('my_app')
 logger.setLevel(logging.DEBUG)
+logger.handler_set = True
 
 stdout_handler = logging.StreamHandler(sys.stdout)
 stdout_handler.setLevel(logging.DEBUG)
 stdout_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 
+
 logger.addHandler(stdout_handler)
 
 class CreateScenarioRequest(AppModel):
     youtube_urls : List[str] = []
+    user_nickname : str = ''
     youtube_prompt: str = ''
     student_category: str = ''
     student_level: str = ''
@@ -39,11 +42,12 @@ def create_scenario(
 ):
     
     youtube_urls = inp.youtube_urls
+    user_nickname = inp.user_nickname
     youtube_prompt = inp.youtube_prompt
     student_category = inp.student_category
     student_level = inp.student_level
     custom_filter = inp.custom_filter
 
     logger.debug(f'Sending a request to create a scenario with YOUTUBE URLS: {youtube_urls}, YOUTUBE PROMPT: {youtube_prompt}  STUDENT CATEGORY: {student_category} STUDENT LEVEL: {student_level} CUSTOM FILTER: {custom_filter}')
-    response = svc.repository.create_scenario_with_youtube(youtube_urls, youtube_prompt, student_category, student_level, custom_filter)
+    response = svc.repository.create_scenario_with_youtube(youtube_urls, user_nickname, youtube_prompt, student_category, student_level, custom_filter)
     return {'scenario' : response}

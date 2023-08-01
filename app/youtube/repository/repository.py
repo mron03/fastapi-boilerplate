@@ -106,18 +106,17 @@ class YoutubeRepository:
     def __init__(self, database: Database):
         self.database = database
 
-    def store_responses_in_db(self, responses):
+    def store_responses_in_db(self, responses, user_nickname, youtube_urls, youtube_prompt):
         connection = establish_database_connection()
         cursor = connection.cursor()
 
 
         response_for_history = ''
 
-        logger.info(f'RESPONSES+SSSS++++=================== {responses}, {type(responses)}')
 
         for response in responses:
 
-            logger.info(f'RESPONSE++++=================== {response}, {type(response)}')
+            logger.info(f'RESPONSE================================== {response}, {type(response)}')
 
             
             for topic, value in json.loads(response).items():
@@ -132,22 +131,20 @@ class YoutubeRepository:
                 response_for_history += '\n'
             
             logger.info(response_for_history)
-            
-
             try:
-                command = 'INSERT INTO history_youtube (user_id, topic, response) VALUES(%s, %s, %s)' 
-                cursor.execute(command, ('mansur', 'youtube', response_for_history,))
+                command = 'INSERT INTO history_youtube (user_id, topic, response, youtube_urls) VALUES(%s, %s, %s, %s)' 
+                cursor.execute(command, (user_nickname, youtube_prompt, response_for_history, youtube_urls))
                 connection.commit()
 
             except (Exception, psycopg2.Error) as error:
-                print("Error executing SQL statements when setting pdf_file in history_pdf:", error)
+                print("Error executing SQL statements when setting pdf_file in history_youtube:", error)
                 connection.rollback()
 
             
         cursor.close()
         connection.close()
 
-    def create_scenario_with_youtube(self, youtube_urls: List[str], youtube_prompt: str, student_category: str, student_level: str, custom_filter: str):
+    def create_scenario_with_youtube(self, youtube_urls: List[str], user_nickname : str, youtube_prompt: str, student_category: str, student_level: str, custom_filter: str):
         youtube_ids = []
     
         if len(youtube_prompt) != 0:
@@ -171,7 +168,7 @@ class YoutubeRepository:
         
         responses = self.get_responses_from_gpt(docs, student_category, student_level, custom_filter)
 
-        self.store_responses_in_db(responses)
+        self.store_responses_in_db(responses, user_nickname, youtube_urls, youtube_prompt)
 
         return responses
         

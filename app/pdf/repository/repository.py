@@ -103,7 +103,7 @@ class PdfRepository:
     def __init__(self, database: Database):
         self.database = database
 
-    def store_responses_in_db(self, responses, file):
+    def store_responses_in_db(self, responses, file, user_nickname):
         connection = establish_database_connection()
         cursor = connection.cursor()
 
@@ -129,7 +129,7 @@ class PdfRepository:
             if file:
                 try:
                     command = 'INSERT INTO history_pdf (user_id, pdf_file, response) VALUES(%s, %s, %s)' 
-                    cursor.execute(command, ('mansur', psycopg2.Binary(pdf_for_history), response_for_history,))
+                    cursor.execute(command, (user_nickname, psycopg2.Binary(pdf_for_history), response_for_history,))
                     connection.commit()
                 except (Exception, psycopg2.Error) as error:
                     logger.info("Error executing SQL statements when setting pdf_file in history_pdf:", error)
@@ -141,7 +141,7 @@ class PdfRepository:
                 
 
 
-    def create_scenario(self, file: BinaryIO, student_category: str, student_level: str, custom_filter: str):
+    def create_scenario(self, file: BinaryIO, user_nickname : str, student_category: str, student_level: str, custom_filter: str):
 
         with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
                 tmp_file.write(file.read())
@@ -181,7 +181,7 @@ class PdfRepository:
             final_responses.append(json.loads(response))
             logger.debug(f'TYPE OF RESPONSES : \n {type(final_responses[-1])}')
 
-        self.store_responses_in_db(final_responses, file)
+        self.store_responses_in_db(final_responses, file, user_nickname)
         
         return final_responses
 
