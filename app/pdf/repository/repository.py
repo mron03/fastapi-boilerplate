@@ -178,7 +178,10 @@ class PdfRepository:
         
         final_responses = []
         for response in responses:
-            final_responses.append(json.loads(response))   
+            try:
+                final_responses.append(json.loads(response)) 
+            except Exception:
+                continue
 
         
         logger.debug(f'======================FINAL RESPONSES=====================\n\n{final_responses}')

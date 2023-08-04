@@ -107,27 +107,30 @@ class YoutubeRepository:
 
 
         for response in responses:
-            
-            for topic, value in json.loads(response).items():
-                response_for_history += topic
-                response_for_history += '\n'
-                    
-                for inst_speech, content in value.items():
-                    
-                    response_for_history += f'{inst_speech} : {content}'
-                    response_for_history += '\n'
-
-                response_for_history += '\n'
-            
-            logger.info(response_for_history)
             try:
-                command = 'INSERT INTO history_youtube (user_id, topic, response, youtube_urls) VALUES(%s, %s, %s, %s)' 
-                cursor.execute(command, (user_nickname, youtube_prompt, response_for_history, youtube_urls))
-                connection.commit()
+                for topic, value in json.loads(response).items():
+                    response_for_history += topic
+                    response_for_history += '\n'
+                        
+                    for inst_speech, content in value.items():
+                        
+                        response_for_history += f'{inst_speech} : {content}'
+                        response_for_history += '\n'
 
-            except (Exception, psycopg2.Error) as error:
-                print("Error executing SQL statements when setting pdf_file in history_youtube:", error)
-                connection.rollback()
+                    response_for_history += '\n'
+                
+                logger.info(response_for_history)
+            except Exception:
+                continue
+
+        try:
+            command = 'INSERT INTO history_youtube (user_id, topic, response, youtube_urls) VALUES(%s, %s, %s, %s)' 
+            cursor.execute(command, (user_nickname, youtube_prompt, response_for_history, youtube_urls))
+            connection.commit()
+
+        except (Exception, psycopg2.Error) as error:
+            print("Error executing SQL statements when setting pdf_file in history_youtube:", error)
+            connection.rollback()   
 
             
         cursor.close()
