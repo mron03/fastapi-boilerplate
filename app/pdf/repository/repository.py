@@ -51,7 +51,7 @@ system_template = '''
     ANALYZE the following text:\n
         ```{materials}```
 
-    Return the answer in VALID JSON format, DO NOT WRITE ANY QUOTES, DOUBLE QUOTES, SLASH and BACKSLASH characters:
+    Return the answer in VALID JSON format and the content should be in {language} language, DO NOT WRITE ANY QUOTES, DOUBLE QUOTES, SLASH and BACKSLASH characters:
         {{
             "Write the topic name" : {{
                 "Instruction 1" : "Write What to do",
@@ -132,7 +132,7 @@ class PdfRepository:
                 
 
 
-    def create_scenario(self, file: BinaryIO, user_nickname : str, student_category: str, student_level: str, custom_filter: str):
+    def create_scenario(self, file: BinaryIO, user_nickname : str, student_category: str, student_level: str, custom_filter: str, language : str):
 
         with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
                 tmp_file.write(file.read())
@@ -155,7 +155,7 @@ class PdfRepository:
 
             logger.debug(f'=================================HERE IS THe  PREV ANSWER {i}===============================: \n {prev_response_summaries}')
 
-            response = self.get_response_from_gpt(doc.page_content, prev_response_summaries, student_category, student_level, custom_filter)
+            response = self.get_response_from_gpt(doc.page_content, prev_response_summaries, student_category, student_level, custom_filter, language)
             responses.append(response)   
 
             i += 1
@@ -187,7 +187,7 @@ class PdfRepository:
         
         return final_responses
 
-    def get_response_from_gpt(self, docs, prev_response_summaries, student_category, student_level, custom_filter):
+    def get_response_from_gpt(self, docs, prev_response_summaries, student_category, student_level, custom_filter, language):
         llm=ChatOpenAI(model_name='gpt-3.5-turbo-16k', temperature=0.5, verbose=True)
 
         system_prompt = SystemMessagePromptTemplate.from_template(system_template)
@@ -200,7 +200,7 @@ class PdfRepository:
         chain = LLMChain(llm=llm, prompt=chain_prompt, verbose=True)
 
         with get_openai_callback() as cb:
-            response = chain.run(materials=docs, prev_responses=prev_response_summaries, student_category=student_category, student_level=student_level, custom_filter=custom_filter)
+            response = chain.run(materials=docs, prev_responses=prev_response_summaries, student_category=student_category, student_level=student_level, custom_filter=custom_filter, language=language)
             print(cb)
 
         return response

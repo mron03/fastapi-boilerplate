@@ -34,6 +34,7 @@ class CreateScenarioRequest(AppModel):
     student_category: str = ''
     student_level: str = ''
     custom_filter: str = ''
+    language: str = ''
 
 @router.post("/create-scenario", status_code=status.HTTP_200_OK)
 def create_scenario(
@@ -47,9 +48,10 @@ def create_scenario(
     student_category = inp.student_category
     student_level = inp.student_level
     custom_filter = inp.custom_filter
+    language = inp.language
 
-    logger.debug(f'Sending a request to create a scenario with YOUTUBE URLS: {youtube_urls}, YOUTUBE PROMPT: {youtube_prompt}  STUDENT CATEGORY: {student_category} STUDENT LEVEL: {student_level} CUSTOM FILTER: {custom_filter}')
+    logger.debug(f'Sending a request to create a scenario with YOUTUBE URLS: {youtube_urls}, YOUTUBE PROMPT: {youtube_prompt}  STUDENT CATEGORY: {student_category} STUDENT LEVEL: {student_level} CUSTOM FILTER: {custom_filter} Language {language}')
     
-    response = svc.repository.create_scenario_with_youtube(youtube_urls, user_nickname, youtube_prompt, student_category, student_level, custom_filter)
+    response = svc.repository.create_scenario_with_youtube(youtube_urls, user_nickname, youtube_prompt, student_category, student_level, custom_filter, language)
     
     return {'scenario' : response}

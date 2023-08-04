@@ -53,7 +53,7 @@ system_template = '''
     ANALYZE the following text TO CREATE VERY DETAILED SCENARIO:\n
         ```{materials}```
 
-    Return the answer in VALID JSON format, DO NOT WRITE ANY QUOTES, DOUBLE QUOTES, SLASH and BACKSLASH characters:
+    Return the answer in VALID JSON format and content should be in {language} language, DO NOT WRITE ANY QUOTES, DOUBLE QUOTES, SLASH and BACKSLASH characters:
         {{
             "Write the topic name" : {{
                 "Instruction 1" : "Write What to do",
@@ -133,7 +133,7 @@ class YoutubeRepository:
         cursor.close()
         connection.close()
 
-    def create_scenario_with_youtube(self, youtube_urls: List[str], user_nickname : str, youtube_prompt: str, student_category: str, student_level: str, custom_filter: str):
+    def create_scenario_with_youtube(self, youtube_urls: List[str], user_nickname : str, youtube_prompt: str, student_category: str, student_level: str, custom_filter: str, language: str):
         youtube_ids = []
     
         if len(youtube_prompt) != 0:
@@ -152,7 +152,7 @@ class YoutubeRepository:
         
         docs, no_transcript_urls = self.split_into_docs(youtube_ids)
    
-        responses = self.get_responses_from_gpt(docs, student_category, student_level, custom_filter)
+        responses = self.get_responses_from_gpt(docs, student_category, student_level, custom_filter, language)
 
         self.store_responses_in_db(responses, user_nickname, youtube_urls, youtube_prompt)
 
@@ -167,7 +167,7 @@ class YoutubeRepository:
         return data["items"]
     
 
-    def get_responses_from_gpt(self, docs, student_category, student_level, custom_filter):
+    def get_responses_from_gpt(self, docs, student_category, student_level, custom_filter, language):
         llm=ChatOpenAI(model_name='gpt-3.5-turbo-16k', temperature=0.3, verbose=True)
 
         system_prompt = SystemMessagePromptTemplate.from_template(system_template)
@@ -195,7 +195,7 @@ class YoutubeRepository:
                 logger.debug(f'=============================NUMBER {i} DOCUMENT HAS {llm.get_num_tokens(doc.page_content)}')
                 logger.debug(f'=============================\nTHE DOC NUMBER {i} CONTENT:=====================\n {doc.page_content[:100]}')
 
-                response = chain.run(prev_responses_summary=prev_responses_summary, student_category = student_category, student_level = student_level, custom_filter=custom_filter, materials=doc.page_content)
+                response = chain.run(prev_responses_summary=prev_responses_summary, student_category = student_category, student_level = student_level, custom_filter=custom_filter, materials=doc.page_content, language=language)
                 responses.append(response)
 
                 logger.debug(f'==============================RESPONSE NUMBER {i}:=================== \n {response}')

@@ -34,12 +34,13 @@ def create_scenario(
     student_category: str = '',
     student_level: str = '',
     custom_filter: str = '',
+    language: str = '',
     svc: Service = Depends(get_service)
 ):
 
     logger.debug(f'Sending a request to create a scenario with NICKNAME: {user_nickname}, {student_category} - student category, {student_level} - student level, {custom_filter} - custom filter')
     try:
-        response = svc.repository.create_scenario(file.file, user_nickname, student_category, student_level, custom_filter)
+        response = svc.repository.create_scenario(file.file, user_nickname, student_category, student_level, custom_filter, language)
     except Exception as e:
         logger.debug(e)
     return {'scenario' : response}
