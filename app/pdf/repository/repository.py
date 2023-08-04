@@ -97,9 +97,10 @@ class PdfRepository:
     def store_responses_in_db(self, responses, file, user_nickname):
         connection = establish_database_connection()
         cursor = connection.cursor()
+        response_for_history = ''
+
 
         for response in responses:
-            response_for_history = ''
             if file:
                 pdf_for_history = file.read()
         
@@ -117,14 +118,14 @@ class PdfRepository:
 
             logger.debug(f'RESPONSE FOR HISTORY ================================ \n{response_for_history}')
 
-            if file:
-                try:
-                    command = 'INSERT INTO history_pdf (user_id, pdf_file, response) VALUES(%s, %s, %s)' 
-                    cursor.execute(command, (user_nickname, psycopg2.Binary(pdf_for_history), response_for_history,))
-                    connection.commit()
-                except (Exception, psycopg2.Error) as error:
-                    logger.info("Error executing SQL statements when setting pdf_file in history_pdf:", error)
-                    connection.rollback()
+        if file:
+            try:
+                command = 'INSERT INTO history_pdf (user_id, pdf_file, response) VALUES(%s, %s, %s)' 
+                cursor.execute(command, (user_nickname, psycopg2.Binary(pdf_for_history), response_for_history,))
+                connection.commit()
+            except (Exception, psycopg2.Error) as error:
+                logger.info("Error executing SQL statements when setting pdf_file in history_pdf:", error)
+                connection.rollback()
             
         cursor.close()
         connection.close()
