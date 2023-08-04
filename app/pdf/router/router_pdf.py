@@ -38,5 +38,8 @@ def create_scenario(
 ):
 
     logger.debug(f'Sending a request to create a scenario with NICKNAME: {user_nickname}, {student_category} - student category, {student_level} - student level, {custom_filter} - custom filter')
-    response = svc.repository.create_scenario(file.file, user_nickname, student_category, student_level, custom_filter)
+    try:
+        response = svc.repository.create_scenario(file.file, user_nickname, student_category, student_level, custom_filter)
+    except Exception as e:
+        logger.debug(e)
     return {'scenario' : response}

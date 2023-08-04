@@ -43,25 +43,17 @@ stdout_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(m
 
 logger.addHandler(stdout_handler)
 
-system_prompt_template = '''
-    Based on PREVIOUS RESPONSES SUMMARY write the LOGICAL CONTINUATION OF THE SCENARIO, DO NOT REPEAT THE CONTENT:
-        ```
-            {prev_responses_summary}
-        ```
+system_template = '''
+    You are a teacher, and your task is to create VERY DETAILED teaching scenario.
+        STUDENT CATEGORY :  {student_category},
+        STUDENT_LEVEL : {student_level},
 
-    You need to use the following data to create VERY DETAILED TEACHING SCENARIO:
-            ```{materials}```
+    Remember, you must consider the specific details in the provided content to craft a teaching scenario. Adapt the complexity according to the STUDENT CATEGORY and STUDENT LEVEL, and follow the command ```{custom_filter}```.
 
-    You are a teacher, You need to create a teaching scenario for {student_category}
+    ANALYZE the following text TO CREATE VERY DETAILED SCENARIO:\n
+        ```{materials}```
 
-    You are aware that your student knowledge is at {student_level} level, so you adapt the materials to them
-    
-    For example, if they are beginner, explain them in easy and understanding way. If they are proffient or higher, you can explain in more complex way with good examples if needed
-
-    You need to follow this command ```{custom_filter}```
-
-
-    Return the answer in VALID JSON format in russian language:
+    Return the answer in VALID JSON format, DO NOT WRITE ANY QUOTES, DOUBLE QUOTES, SLASH and BACKSLASH characters:
         {{
             "Write the topic name" : {{
                 "Instruction 1" : "Write What to do",
@@ -74,7 +66,7 @@ system_prompt_template = '''
                 "Speech N": "..."
             }}
         }}
-    
+
     Example of idiomatic JSON response: {{"Integrals":{{"Instruction 1":"Introduce topic of integrals","Speech 1":"Today, we are going to learn integrals","Instruction 2":"Show examples and problems","Speech 2":"Here is the problem we are going to solve","Instruction 3":"Conclude the topic","Speech 3":"In conclusion, integrals are very useful"}}}}
 '''
 load_dotenv()
@@ -115,9 +107,6 @@ class YoutubeRepository:
 
 
         for response in responses:
-
-            logger.info(f'RESPONSE================================== {response}, {type(response)}')
-
             
             for topic, value in json.loads(response).items():
                 response_for_history += topic
@@ -155,22 +144,19 @@ class YoutubeRepository:
 
         videos = youtube_urls.copy()
         videos.extend([f'https://youtu.be/{id}' for id in youtube_ids])
-        # videos = videos.extend([f'https://youtu.be/{id}' for id in youtube_ids])
         logger.debug(f'\nTHE YOUTUBE LINKS USED ========================================== {videos}')
 
 
         for url in youtube_urls:
             youtube_ids.append(url.split('/')[3])
         
-        docs = self.split_into_docs(youtube_ids)
-
-        logger.debug(f'DOCSSSSSSSS+================================== \n {docs}')
-        
+        docs, no_transcript_urls = self.split_into_docs(youtube_ids)
+   
         responses = self.get_responses_from_gpt(docs, student_category, student_level, custom_filter)
 
         self.store_responses_in_db(responses, user_nickname, youtube_urls, youtube_prompt)
 
-        return responses
+        return responses, no_transcript_urls
         
 
     def get_youtube_videos(self, prompt):
@@ -184,9 +170,9 @@ class YoutubeRepository:
     def get_responses_from_gpt(self, docs, student_category, student_level, custom_filter):
         llm=ChatOpenAI(model_name='gpt-3.5-turbo-16k', temperature=0.3, verbose=True)
 
-        system_prompt = SystemMessagePromptTemplate.from_template(system_prompt_template)
+        system_prompt = SystemMessagePromptTemplate.from_template(system_template)
 
-        human_prompt_template = '''CREATE A TEACHING SCENARIO'''
+        human_prompt_template = '''HELP ME WRITE TEACHING SCENARIO'''
         human_prompt = HumanMessagePromptTemplate.from_template(human_prompt_template)
 
         chain_prompt = ChatPromptTemplate.from_messages([human_prompt, system_prompt])
@@ -199,7 +185,6 @@ class YoutubeRepository:
         prev_responses_summary = ''
         responses = []
 
-
         # for i in range(len(docs)):
         #     logger.debug(f'NUMBER {i + 1} DOCUMENT HAS {llm.get_num_tokens(docs[i].page_content)}')
         #     logger.debug(f'\nTHE DOC NUMBER {i + 1} CONTENT:\n {docs[i].page_content}')
@@ -207,21 +192,21 @@ class YoutubeRepository:
         i = 1
         for doc in docs:
             with get_openai_callback() as cb:
-                logger.debug(f'==================================================NUMBER {i} DOCUMENT HAS {llm.get_num_tokens(doc.page_content)}')
-                logger.debug(f'==================================================\nTHE DOC NUMBER {i} CONTENT:\n {doc.page_content}')
+                logger.debug(f'=============================NUMBER {i} DOCUMENT HAS {llm.get_num_tokens(doc.page_content)}')
+                logger.debug(f'=============================\nTHE DOC NUMBER {i} CONTENT:=====================\n {doc.page_content[:100]}')
 
-                response = chain.run(question='CREATE TEACHING SCENARIO', prev_responses_summary=prev_responses_summary, student_category = student_category, student_level = student_level, custom_filter=custom_filter, materials=doc.page_content)
+                response = chain.run(prev_responses_summary=prev_responses_summary, student_category = student_category, student_level = student_level, custom_filter=custom_filter, materials=doc.page_content)
                 responses.append(response)
 
-                logger.debug(f'================================================RESPONSE NUMBER {i}: \n {response}')
-                logger.debug(f'================================================debug ABOUT OPENAI FOR MAIN CHAIN: {cb}')
-            
-            with get_openai_callback() as cb:
-                inp = text_splitter.create_documents(responses)
-                prev_responses_summary = summarization_chain.run(inp)
+                logger.debug(f'==============================RESPONSE NUMBER {i}:=================== \n {response}')
+                logger.debug(f'==============================debug ABOUT OPENAI FOR MAIN CHAIN: {cb}')
+            i += 1
+            # with get_openai_callback() as cb:
+            #     inp = text_splitter.create_documents(responses)
+            #     prev_responses_summary = summarization_chain.run(inp)
 
-                logger.debug(f'=====================================================THE SUMMARY OF PREVIOUS RESPONSES: \n {prev_responses_summary}')
-                logger.debug(f'===================================================debug ABOUT OPENAI FOR SUMMARIZATION CHAIN: {cb}')
+            #     logger.debug(f'=====================================================THE SUMMARY OF PREVIOUS RESPONSES: \n {prev_responses_summary}')
+            #     logger.debug(f'===================================================debug ABOUT OPENAI FOR SUMMARIZATION CHAIN: {cb}')
 
         return responses
 
@@ -231,16 +216,15 @@ class YoutubeRepository:
         llm = ChatOpenAI(model='gpt-3.5-turbo', temperature=0, verbose=True)
         text_splitter = CharacterTextSplitter(separator="\n", chunk_size=10000, chunk_overlap=0, length_function = len)
 
-
-        filtered_transcript = ''
-        untranscriptble_urls = []
+        no_transcript_urls = []
         docs = []
 
         for id in youtube_ids:
+            filtered_transcript = ''
             try:
                 transcript_list = YouTubeTranscriptApi.list_transcripts(id)
             except Exception as e:
-                untranscriptble_urls.append(f'https://youtu.be/{id}')
+                no_transcript_urls.append(f'https://youtu.be/{id}')
                 continue
 
 
@@ -255,12 +239,19 @@ class YoutubeRepository:
 
             for text in final_transcript:
                 filtered_transcript = filtered_transcript + text['text'] + ' '
-          
-            docs = text_splitter.create_documents([filtered_transcript])
 
-        if untranscriptble_urls:
+            logger.debug(f'=====================VIDEO IDDDDD==================\n\n{id}')
+          
+            doc = text_splitter.create_documents([filtered_transcript])
+
+            for d in docs:
+                logger.debug(f'\n\n============THE DOC from {id} ============== \n\n{d.page_content[:1000]}')
+
+            docs.extend(doc)
+
+        if no_transcript_urls:
             untranscriptble_urls_message = 'Извините данные ссылки не имеют транскрита:\n'
-            for url in untranscriptble_urls:
+            for url in no_transcript_urls:
                 untranscriptble_urls_message += f'\n{url}\n'
 
-        return docs
+        return docs, no_transcript_urls

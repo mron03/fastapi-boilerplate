@@ -43,24 +43,15 @@ logger.addHandler(stdout_handler)
 
 
 system_template = '''
-    Based on PREVIOUS RESPONSES SUMMARY write the LOGICAL CONTINUATION OF THE SCENARIO, DO NOT REPEAT THE CONTENT:
-        ```
-            {prev_responses_summaries}
-        ```
+    You are a teacher, and your task is to create a unique teaching scenario for {student_category} based on the specific content provided below. Your student's knowledge is at {student_level} level, so make sure to adapt the materials to them.
 
-    You need to use the following data to create plan:
-            ```{materials}```
+    Remember, you must consider the specific details in the provided content to craft a teaching scenario that hasn't been covered in previous responses. Adapt the complexity according to the student level, and follow the command ```{custom_filter}```.
 
-    You are a teacher, You need to create a teaching scenario for {student_category}
-
-    You are aware that your student knowledge is at {student_level} level, so you adapt the materials to them
     
-    For example, if they are beginner, explain them in easy and understanding way. If they are proffient or higher, you can explain in more complex way with good examples if needed
+    ANALYZE the following text:\n
+        ```{materials}```
 
-    You need to follow this command ```{custom_filter}```
-
-
-    Return the answer in VALID JSON format in russian language:
+    Return the answer in VALID JSON format, DO NOT WRITE ANY QUOTES, DOUBLE QUOTES, SLASH and BACKSLASH characters:
         {{
             "Write the topic name" : {{
                 "Instruction 1" : "Write What to do",
@@ -73,7 +64,7 @@ system_template = '''
                 "Speech N": "..."
             }}
         }}
-    
+
     Example of idiomatic JSON response: {{"Integrals":{{"Instruction 1":"Introduce topic of integrals","Speech 1":"Today, we are going to learn integrals","Instruction 2":"Show examples and problems","Speech 2":"Here is the problem we are going to solve","Instruction 3":"Conclude the topic","Speech 3":"In conclusion, integrals are very useful"}}}}
 '''
 load_dotenv()
@@ -146,13 +137,11 @@ class PdfRepository:
         with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
                 tmp_file.write(file.read())
         loader = PyPDFLoader(tmp_file.name)
-        text_splitter = CharacterTextSplitter(separator='\n', chunk_size=20000, chunk_overlap=0)
+        text_splitter = CharacterTextSplitter(separator='\n', chunk_size=40000, chunk_overlap=0)
 
         docs = loader.load_and_split(text_splitter=text_splitter)
         os.remove(tmp_file.name)
 
-        for i in range(len(docs)):
-            logger.debug(f'Doc number {i}: \n {docs[i].page_content}')
         
         llm = ChatOpenAI(temperature=0.5)
         summarization_chain = load_summarize_chain(llm, chain_type="map_reduce")
@@ -161,36 +150,49 @@ class PdfRepository:
         prev_response_summaries = ''
 
         i = 1
-        
+        logger.debug(f'==========================NUM OF DOCS ============= {len(docs)}')
         for doc in docs:
 
-            logger.debug(f'HERE IS THE SUMMARY OF PREV ANSWER {i}: \n {prev_response_summaries}')
+            logger.debug(f'=================================HERE IS THe  PREV ANSWER {i}===============================: \n {prev_response_summaries}')
 
             response = self.get_response_from_gpt(doc.page_content, prev_response_summaries, student_category, student_level, custom_filter)
             responses.append(response)   
 
-            logger.debug(f'HERE IS THE RESPONSE NUMBER {i}: \n {response}') 
             i += 1
 
-            inp = text_splitter.create_documents(responses)
-            prev_response_summaries = summarization_chain.run(inp)
+            inp = json.loads(response)
+
+            inpp = ''
+            for topic, value in inp.items():
+                inpp = inpp + topic + '\n'
+
+                for inst, speech in value.items():
+                    inpp += f'{inst} : {speech}'
+
+            logger.debug(f'===========================RESPONSE FORMATTED======================= \n {inpp}')
+            prev_response_summaries = inpp  
+
+            # inp = text_splitter.create_documents(responses)
+            # prev_response_summaries = summarization_chain.run(inp)
 
         
         final_responses = []
         for response in responses:
-            final_responses.append(json.loads(response))
-            logger.debug(f'TYPE OF RESPONSES : \n {type(final_responses[-1])}')
+            final_responses.append(json.loads(response))   
+
+        
+        logger.debug(f'======================FINAL RESPONSES=====================\n\n{final_responses}')
 
         self.store_responses_in_db(final_responses, file, user_nickname)
         
         return final_responses
 
     def get_response_from_gpt(self, docs, prev_response_summaries, student_category, student_level, custom_filter):
-        llm=ChatOpenAI(model_name='gpt-3.5-turbo-16k', temperature=0, verbose=True)
+        llm=ChatOpenAI(model_name='gpt-3.5-turbo-16k', temperature=0.5, verbose=True)
 
         system_prompt = SystemMessagePromptTemplate.from_template(system_template)
 
-        human_template = '''Complete the following request: {query}'''
+        human_template = '''HELP ME WRITE TEACHING SCENARIO'''
         human_prompt = HumanMessagePromptTemplate.from_template(human_template)
 
         chain_prompt = ChatPromptTemplate.from_messages([human_prompt, system_prompt])
@@ -198,7 +200,7 @@ class PdfRepository:
         chain = LLMChain(llm=llm, prompt=chain_prompt, verbose=True)
 
         with get_openai_callback() as cb:
-            response = chain.run(query='Create Teaching Scenario', materials=docs, prev_responses_summaries=prev_response_summaries, student_category=student_category, student_level=student_level, custom_filter=custom_filter)
+            response = chain.run(materials=docs, prev_responses=prev_response_summaries, student_category=student_category, student_level=student_level, custom_filter=custom_filter)
             print(cb)
 
         return response
